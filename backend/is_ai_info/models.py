@@ -87,16 +87,16 @@ class SubjectInSchedule(models.Model):
 
 
 class Question(models.Model):
-    question_from = models.ForeignKey(Student, on_delete=models.SET_NULL)
-    question_to = models.ForeignKey(Educator, on_delete=models.SET_NULL)
+    question_from = models.ForeignKey(Student, on_delete=models.SET_NULL, null=True, default=None)
+    question_to = models.ForeignKey(Educator, on_delete=models.SET_NULL, null=True)
     is_private = models.BooleanField(default=False)
     text = models.TextField()
     question_datetime = models.DateTimeField(auto_now_add=True)
 
 
 class QuestionReply(models.Model):
-    author_educator = models.ForeignKey(Educator, on_delete=models.SET_NULL, default=None)
-    author_student = models.ForeignKey(Student, on_delete=models.SET_NULL, default=None)
+    author_educator = models.ForeignKey(Educator, on_delete=models.SET_NULL, default=None, null=True)
+    author_student = models.ForeignKey(Student, on_delete=models.SET_NULL, default=None, null=True)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     text = models.TextField()
     reply_datetime = models.DateTimeField(auto_now_add=True)

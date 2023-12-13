@@ -27,8 +27,22 @@ class StudentSerializer(ModelSerializer):
         fields = '__all__'
 
 
+class StudentSerializerCreateUpdate(ModelSerializer):
+
+    class Meta:
+        model = Student
+        fields = '__all__'
+
+
 class EducatorSerializer(ModelSerializer):
     user = UserSerializer()
+
+    class Meta:
+        model = Educator
+        fields = '__all__'
+
+
+class EducatorSerializerCreateUpdate(ModelSerializer):
 
     class Meta:
         model = Educator
@@ -51,9 +65,31 @@ class SubjectInScheduleSerializer(ModelSerializer):
         fields = '__all__'
 
 
+class SubjectInScheduleSerializerCreateUpdate(ModelSerializer):
+
+    class Meta:
+        model = SubjectInSchedule
+        fields = '__all__'
+
+
+class SubjectInScheduleSerializerForList(ModelSerializer):
+    subject = SubjectSerializer()
+
+    class Meta:
+        model = SubjectInSchedule
+        exclude = ['educator']
+
+
 class QuestionSerializer(ModelSerializer):
     question_from = StudentSerializer()
     question_to = EducatorSerializer()
+
+    class Meta:
+        model = Question
+        fields = '__all__'
+
+
+class QuestionSerializerCreateUpdate(ModelSerializer):
 
     class Meta:
         model = Question
@@ -68,3 +104,19 @@ class QuestionReplySerializer(ModelSerializer):
     class Meta:
         model = QuestionReply
         fields = '__all__'
+
+
+class QuestionReplySerializerCreateUpdate(ModelSerializer):
+
+    class Meta:
+        model = QuestionReply
+        fields = '__all__'
+
+
+class QuestionReplySerializerForList(ModelSerializer):
+    author_educator = EducatorSerializer()
+    author_student = StudentSerializer()
+
+    class Meta:
+        model = QuestionReply
+        exclude = ['question']

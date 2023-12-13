@@ -6,35 +6,40 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet, ReadOnlyModelViewSet
 
-from .models import Group, Educator, Question, Student, QuestionReply
+from .models import Group, Educator, Question, Student, QuestionReply, SubjectInSchedule
 from .serializers import StudentSerializer, GroupSerializer, EducatorSerializer, UserSerializer, \
-    SubjectInScheduleSerializer, QuestionSerializer, QuestionReplySerializer
+    SubjectInScheduleSerializer, QuestionSerializer, QuestionReplySerializer, StudentSerializerCreateUpdate, \
+    SubjectInScheduleSerializerCreateUpdate, EducatorSerializerCreateUpdate, QuestionReplySerializerCreateUpdate, \
+    QuestionSerializerCreateUpdate, SubjectInScheduleSerializerForList, QuestionReplySerializerForList
 
 
 class AdminViewSet(GenericViewSet):
     queryset = User.objects.all()
-    permission_classes = [IsAdminUser]
+    serializer_class = EducatorSerializer
+    #permission_classes = [IsAdminUser]
 
     @action(methods=['post'], detail=False)
     def new_educator(self, request):
         username = request.data.pop('username')
         password = request.data.pop('password')
-        serializer = EducatorSerializer(request.data)
         with transaction.atomic():
+            data = request.data
             user = User.objects.create(username=username, password=password)
-            serializer.user = UserSerializer(user)
+            data['user'] = user.pk
+            serializer = EducatorSerializerCreateUpdate(data=data)
             serializer.is_valid(raise_exception=True)
-            serializer.save()
-        return Response(serializer.data)
+            educator = serializer.save()
+        return Response(EducatorSerializer(educator).data)
 
     @action(methods=['post'], detail=True)
     def new_subject_in_schedule(self, request, pk=None):
         educator = get_object_or_404(Educator, pk=pk)
-        serializer = SubjectInScheduleSerializer(data=request.data)
-        serializer.educator = EducatorSerializer(educator)
+        data = request.data
+        data['educator'] = educator.pk
+        serializer = SubjectInScheduleSerializerCreateUpdate(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+        subject = serializer.save()
+        return Response(SubjectInScheduleSerializer(subject).data)
 
     @action(methods=['post'], detail=False)
     def new_group(self, request):
@@ -48,50 +53,69 @@ class AdminViewSet(GenericViewSet):
         group = get_object_or_404(Group, pk=pk)
         username = request.data.pop('username')
         password = request.data.pop('password')
-        serializer = StudentSerializer(data=request.data)
-        serializer.group = GroupSerializer(group)
         with transaction.atomic():
             user = User.objects.create(username=username, password=password)
-            serializer.user = UserSerializer(user)
+            data = request.data
+            data['user'] = user.pk
+            data['group'] = group.pk
+            serializer = StudentSerializerCreateUpdate(data=data)
             serializer.is_valid(raise_exception=True)
-            serializer.save()
-        return Response(serializer.data)
+            student = serializer.save()
+        return Response(StudentSerializer(student).data)
 
 
 class StudentViewSet(ReadOnlyModelViewSet):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
-    permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
 
 
 class EducatorViewSet(ReadOnlyModelViewSet):
     queryset = Educator.objects.all()
     serializer_class = EducatorSerializer
-    permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        response = self.get_serializer(instance).data
+        response['schedule'] = SubjectInScheduleSerializerForList(
+            SubjectInSchedule.objects.filter(educator=instance).order_by('-even_week', 'day', 'from_to'), many=True
+        ).data
+        return Response(response)
 
 
 class ForumViewSet(ModelViewSet):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
-    permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data
+        data['question_from'] = Student.objects.get(user=request.user).pk
+        serializer = QuestionSerializerCreateUpdate(data=data)
+        serializer.is_valid(raise_exception=True)
+        question = serializer.save()
+        return Response(QuestionSerializer(question).data, status=201)
 
     def retrieve(self, request, *args, **kwargs):
         question = self.get_object()
         serializer = self.get_serializer(question)
         response = serializer.data
-        response['replies'] = QuestionReply.objects.filter(question).order_by('-reply_datetime')
+        response['replies'] = QuestionReplySerializerForList(
+            QuestionReply.objects.filter(question=question).order_by('-reply_datetime'), many=True).data
         return Response(response)
 
     @action(methods=['post'], detail=True)
     def reply(self, request, pk=None):
         question = get_object_or_404(Question, pk=pk)
-        serializer = QuestionReplySerializer(data=request.data)
+        data = request.data
+        data['question'] = question.pk
         user = request.user
-        if Educator.objects.filter(user=user) > 0:
-            serializer.author_educator = EducatorSerializer(Educator.objects.get(user=user))
+        if Educator.objects.filter(user=user).count() > 0:
+            data['author_educator'] = Educator.objects.get(user=user).pk
         else:
-            serializer.author_student = StudentSerializer(Student.objects.get(user=user))
-        serializer.question = QuestionSerializer(question)
+            data['author_student'] = Student.objects.get(user=user).pk
+        serializer = QuestionReplySerializerCreateUpdate(data=data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+        reply = serializer.save()
+        return Response(QuestionReplySerializer(reply).data)
