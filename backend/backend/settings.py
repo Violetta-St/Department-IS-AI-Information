@@ -142,6 +142,14 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+DEFAULT_FROM_EMAIL = 'pi311@mail.ru'
+SERVER_EMAIL = 'pi311@mail.ru'
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.mail.ru'
+EMAIL_HOST_USER = 'pi311@mail.ru'
+EMAIL_HOST_PASSWORD = ''
+EMAIL_PORT = 465
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",

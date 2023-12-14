@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet, ReadOnlyModelViewSet
 
+from .logic import send_login_and_password_to_email
 from .models import Group, Educator, Question, Student, QuestionReply, SubjectInSchedule
 from .serializers import StudentSerializer, GroupSerializer, EducatorSerializer, UserSerializer, \
     SubjectInScheduleSerializer, QuestionSerializer, QuestionReplySerializer, StudentSerializerCreateUpdate, \
@@ -22,6 +23,7 @@ class AdminViewSet(GenericViewSet):
     def new_educator(self, request):
         username = request.data.pop('username')
         password = request.data.pop('password')
+
         with transaction.atomic():
             data = request.data
             user = User.objects.create(username=username, password=password)
@@ -29,6 +31,7 @@ class AdminViewSet(GenericViewSet):
             serializer = EducatorSerializerCreateUpdate(data=data)
             serializer.is_valid(raise_exception=True)
             educator = serializer.save()
+            send_login_and_password_to_email(educator, username, password)
         return Response(EducatorSerializer(educator).data)
 
     @action(methods=['post'], detail=True)
@@ -61,6 +64,7 @@ class AdminViewSet(GenericViewSet):
             serializer = StudentSerializerCreateUpdate(data=data)
             serializer.is_valid(raise_exception=True)
             student = serializer.save()
+            send_login_and_password_to_email(student, username, password)
         return Response(StudentSerializer(student).data)
 
 
